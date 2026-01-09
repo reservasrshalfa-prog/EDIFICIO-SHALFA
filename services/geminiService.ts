@@ -1,8 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
-import { HOTEL_INFO, HOTEL_RULES, ROOMS } from '../constants';
 
-const apiKey = process.env.API_KEY || ''; 
-const ai = new GoogleGenAI({ apiKey });
+import { GoogleGenAI } from "@google/genai";
+import { HOTEL_INFO, HOTEL_RULES, ROOMS } from '../constants.ts';
 
 const ROOM_INVENTORY = ROOMS.map(room => 
   `- 🏨 **${room.name}** (${room.type}):
@@ -27,13 +25,18 @@ Sempre priorize vender uma reserva no Residencial Shalfa.
 `;
 
 export const sendMessageToGemini = async (history: {role: string, parts: {text: string}[]}[], message: string): Promise<string> => {
-  if (!apiKey) return "Sistema offline. Fale conosco no WhatsApp: " + HOTEL_INFO.phone;
+  // Always use process.env.API_KEY directly as per guidelines
+  if (!process.env.API_KEY) {
+    return "No momento estou offline. Mas você pode falar com nossa equipe agora mesmo pelo WhatsApp: " + HOTEL_INFO.phone;
+  }
 
   try {
+    // Initialize GoogleGenAI instance right before the call using the named parameter
+    const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
     const response = await ai.models.generateContent({
       model: 'gemini-3-flash-preview',
       contents: [
-        ...history.map(h => ({ role: h.role, parts: h.parts })),
+        ...history.map(h => ({ role: h.role as any, parts: h.parts })),
         { role: 'user', parts: [{ text: message }] }
       ],
       config: {
@@ -43,13 +46,10 @@ export const sendMessageToGemini = async (history: {role: string, parts: {text: 
       },
     });
 
-    const text = response.text || "Poderia repetir? Não entendi sua dúvida.";
-    
-    // Se houver chunks de grounding (links do Google), poderíamos listá-los, 
-    // mas para o chat vamos manter o texto limpo.
-    return text;
+    // Access the .text property directly as it is a property, not a method
+    return response.text || "Desculpe, não consegui processar sua pergunta. Pode repetir?";
   } catch (error) {
-    console.error("Gemini Error:", error);
-    return "Estou reconectando. Pode tentar de novo?";
+    console.error("Gemini Service Error:", error);
+    return "Estou com uma instabilidade técnica. Por favor, tente novamente em instantes ou chame no WhatsApp.";
   }
 };
