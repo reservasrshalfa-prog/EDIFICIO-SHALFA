@@ -1,4 +1,5 @@
 
+import { useLanguage } from "../contexts/LanguageContext";
 import React, { useState, useRef, useEffect } from "react";
 import { MessageSquare, X, Send, Sparkles, User, Bot } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
@@ -14,6 +15,7 @@ const SUGGESTIONS = [
 ];
 
 const Concierge: React.FC = () => {
+  const { language } = useLanguage();
   const [isOpen, setIsOpen] = useState(false);
   const [showTooltip, setShowTooltip] = useState(false);
   const [isDismissed, setIsDismissed] = useState(false);
@@ -21,7 +23,11 @@ const Concierge: React.FC = () => {
     {
       id: "intro",
       role: "model",
-      text: "Olá. Sou o Concierge Virtual do **Residencial Shalfa**. \n\nEstou aqui para ajudar a escolher a suíte perfeita ou tirar dúvidas sobre sua viagem a Foz. Como posso servir você hoje?",
+      text: language === 'en' 
+        ? "Hello. I am the Virtual Concierge of **Residencial Shalfa**. \n\nHow can I help you today?" 
+        : language === 'es'
+        ? "Hola. Soy el Conserje Virtual de **Residencial Shalfa**. \n\n¿Como posso ayudarte hoy?"
+        : "Olá. Sou o Concierge Virtual do **Residencial Shalfa**. \n\nEstou aqui para ajudar a escolher a suíte perfeita ou tirar dúvidas sobre sua viagem a Foz. Como posso servir você hoje?",
       timestamp: new Date(),
     },
   ]);
@@ -91,7 +97,7 @@ const Concierge: React.FC = () => {
     }));
 
     try {
-      const responseText = await sendMessageToGemini(history, userMessage.text);
+      const responseText = await sendMessageToGemini(history, userMessage.text, language);
       const botMessage: ChatMessage = {
         id: (Date.now() + 1).toString(),
         role: "model",
@@ -215,7 +221,7 @@ const Concierge: React.FC = () => {
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         onKeyDown={handleKeyPress}
-                        placeholder="Digite sua dúvida..."
+                        placeholder={language === 'en' ? "Type your question..." : language === 'es' ? "Escribe tu duda..." : "Digite sua dúvida..."}
                         className="w-full bg-dark-900 border border-white/10 rounded-lg pl-4 pr-12 py-3.5 text-sm text-white focus:outline-none focus:border-brand-700 focus:ring-1 focus:ring-brand-700/50 transition-all placeholder-gray-600 font-light"
                     />
                     <button
@@ -243,7 +249,7 @@ const Concierge: React.FC = () => {
                     onClick={toggleChat}
                 >
                     <div>
-                        <p className="font-serif text-sm text-brand-100">Posso ajudar?</p>
+                        <p className="font-serif text-sm text-brand-100">{language === 'en' ? "Can I help you?" : language === 'es' ? "¿Puedo ayudarte?" : "Posso ajudar?"}</p>
                         <p className="text-[9px] text-brand-500 font-bold uppercase tracking-widest">Concierge Online</p>
                     </div>
                     <button onClick={handleDismissTooltip} className="text-gray-500 hover:text-white transition-colors p-1">

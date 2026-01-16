@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { HashRouter, Routes, Route, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Hero from './components/Hero';
@@ -10,6 +10,7 @@ import LocationMap from './components/LocationMap';
 import Footer from './components/Footer';
 import Concierge from './components/Concierge';
 import BookingPage from './components/BookingPage'; 
+import ScrollToTop from './components/ScrollToTop';
 import { Toaster } from 'react-hot-toast';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import { HOTEL_INFO } from './constants';
@@ -17,12 +18,16 @@ import { ArrowRight } from 'lucide-react';
 import { LanguageProvider, useLanguage } from './contexts/LanguageContext';
 
 const RevealOnScroll: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+    // Detecta se é mobile para simplificar a animação
+    const isMobile = useMemo(() => typeof window !== 'undefined' && window.innerWidth < 768, []);
+    
     return (
         <motion.div
-            initial={{ opacity: 0, y: 30 }}
+            initial={isMobile ? { opacity: 0 } : { opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true, margin: "-50px" }}
-            transition={{ duration: 0.6, ease: "easeOut" }}
+            viewport={{ once: true, margin: isMobile ? "-20px" : "-50px" }}
+            transition={{ duration: isMobile ? 0.4 : 0.6, ease: "easeOut" }}
+            style={{ willChange: "transform, opacity" }}
         >
             {children}
         </motion.div>
@@ -43,9 +48,9 @@ const HomeContent: React.FC = () => {
   return (
     <div className="min-h-screen bg-brand-50 dark:bg-dark-950 font-sans text-gray-900 dark:text-gray-200 transition-colors duration-500 relative overflow-x-hidden">
       
-      {/* Progress Bar */}
+      {/* Progress Bar - Somente visível se não for mobile muito pequeno para economizar draw calls */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-brand-700 dark:bg-brand-500 origin-left z-[100]"
+        className="fixed top-0 left-0 right-0 h-1 bg-brand-700 dark:bg-brand-500 origin-left z-[100] hidden md:block"
         style={{ scaleX }}
       />
 
@@ -59,9 +64,9 @@ const HomeContent: React.FC = () => {
         <ShoppingParaguay />
       </RevealOnScroll>
 
-      {/* Hotel Introduction (Essence) */}
+      {/* Hotel Introduction */}
       <RevealOnScroll>
-          <div className="bg-brand-50 dark:bg-dark-900 py-16 md:py-24 px-4 relative transition-colors duration-500">
+          <div className="bg-brand-50 dark:bg-dark-900 py-12 md:py-24 px-4 relative transition-colors duration-500">
               <div className="max-w-4xl mx-auto text-center mb-8 md:mb-16">
                   <span className="text-brand-700 dark:text-brand-400 uppercase tracking-widest text-[10px] md:text-xs font-bold">{t('home_intro.label')}</span>
                   <h2 className="text-3xl md:text-5xl font-serif text-dark-950 dark:text-white mt-4 mb-4 md:mb-6">{t('home_intro.title')}</h2>
@@ -74,9 +79,8 @@ const HomeContent: React.FC = () => {
           </div>
       </RevealOnScroll>
       
-      {/* SECTION CTA PARA RESERVAS */}
       <RevealOnScroll>
-        <div id="cta-quartos" className="py-20 md:py-32 bg-brand-100 dark:bg-black relative overflow-hidden">
+        <div id="cta-quartos" className="py-16 md:py-32 bg-brand-100 dark:bg-black relative overflow-hidden">
              <div className="absolute inset-0 opacity-10 dark:opacity-20 pointer-events-none" style={{ backgroundImage: 'radial-gradient(#C59D5F 1px, transparent 1px)', backgroundSize: '40px 40px' }}></div>
              
              <div className="max-w-5xl mx-auto px-6 text-center relative z-10">
@@ -87,7 +91,7 @@ const HomeContent: React.FC = () => {
                 
                 <button 
                     onClick={() => navigate('/reservas')}
-                    className="group relative inline-flex items-center gap-4 px-8 py-4 md:px-10 md:py-5 bg-brand-700 dark:bg-brand-600 text-white font-bold uppercase tracking-widest text-xs md:text-sm hover:bg-brand-800 dark:hover:bg-brand-500 transition-all shadow-2xl"
+                    className="group relative inline-flex items-center gap-4 px-8 py-4 md:px-10 md:py-5 bg-brand-700 dark:bg-brand-600 text-white font-bold uppercase tracking-widest text-xs md:text-sm hover:bg-brand-800 dark:hover:bg-brand-500 transition-all shadow-xl"
                 >
                     {t('rooms.cta')}
                     <ArrowRight className="group-hover:translate-x-1 transition-transform" />
@@ -97,7 +101,7 @@ const HomeContent: React.FC = () => {
       </RevealOnScroll>
 
       <RevealOnScroll>
-        <div id="localizacao" className="py-16 md:py-24 px-4 bg-brand-50 dark:bg-dark-900 scroll-mt-20 transition-colors duration-500">
+        <div id="localizacao" className="py-12 md:py-24 px-4 bg-brand-50 dark:bg-dark-900 scroll-mt-20 transition-colors duration-500">
             <div className="max-w-7xl mx-auto grid md:grid-cols-2 gap-10 md:gap-16 items-center">
                 <div className="order-2 md:order-1 space-y-6 md:space-y-8">
                     <div>
@@ -122,7 +126,7 @@ const HomeContent: React.FC = () => {
                         </div>
                     </div>
                 </div>
-                <div className="order-1 md:order-2 h-[350px] md:h-[500px] w-full shadow-2xl shadow-gray-300 dark:shadow-black/50 border border-white dark:border-white/10 hover:scale-[1.01] transition-all duration-700">
+                <div className="order-1 md:order-2 h-[300px] md:h-[500px] w-full shadow-lg border border-white dark:border-white/10">
                     <LocationMap />
                 </div>
             </div>
@@ -133,13 +137,10 @@ const HomeContent: React.FC = () => {
 };
 
 const App: React.FC = () => {
-  useEffect(() => {
-    document.body.style.overflow = '';
-  }, []);
-
   return (
     <LanguageProvider>
         <HashRouter>
+        <ScrollToTop />
         <div className="relative antialiased selection:bg-brand-400 selection:text-black">
             <Navbar />
             <Routes>
@@ -148,14 +149,7 @@ const App: React.FC = () => {
             </Routes>
             <Footer />
             <Concierge />
-            <Toaster position="bottom-center" toastOptions={{
-                style: {
-                    background: '#18181b', 
-                    color: '#fff',
-                    border: '1px solid #333',
-                    fontFamily: 'serif'
-                }
-            }} />
+            <Toaster position="bottom-center" />
         </div>
         </HashRouter>
     </LanguageProvider>

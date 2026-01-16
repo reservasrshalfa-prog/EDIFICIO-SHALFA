@@ -1,55 +1,87 @@
 
 import { GoogleGenAI } from "@google/genai";
-import { HOTEL_INFO, HOTEL_RULES, ROOMS } from '../constants.ts';
+import { HOTEL_INFO, HOTEL_RULES, ROOMS } from '../constants';
 
+// Formata a lista de quartos para a IA entender o inventário detalhadamente
 const ROOM_INVENTORY = ROOMS.map(room => 
   `- 🏨 **${room.name}** (${room.type}):
     • Capacidade: ${room.capacity} pessoas
     • Preço: R$ ${room.price}
-    • Cozinha: ${room.amenities.some(a => a.toLowerCase().includes('cozinha')) ? 'SIM, COMPLETA' : 'NÃO (Só Frigobar)'}
+    • Cozinha: ${room.amenities.some(a => a.toLowerCase().includes('cozinha')) ? 'SIM, COMPLETA (Fogão/Forno/Micro)' : 'NÃO (Só Frigobar)'}
     • Descrição: ${room.description}`
 ).join('\n');
 
-const SYSTEM_INSTRUCTION = `
+const getSystemInstruction = (lang: string) => {
+  const languageNames: Record<string, string> = {
+    pt: 'Português',
+    en: 'English',
+    es: 'Español'
+  };
+  
+  const currentLangName = languageNames[lang] || 'Português';
+
+  return `
 PERSONA:
-Você é o Concierge Virtual do Residencial Shalfa em Foz do Iguaçu.
-SEJA CURTO E OBJETIVO. Máximo 3 frases.
+You are the Virtual Concierge of Residencial Shalfa.
+**YOUR GOLDEN RULE: BE EXTREMELY SHORT AND OBJECTIVE.**
+The user is on a mobile device and wants quick information. Do not write long texts.
+**IMPORTANT: You must respond ALWAYS in ${currentLangName}.**
 
-CONHECIMENTO:
-1. HOTEL: Localizado na Vila Portes (R. Cassiano Ricardo, 675). Check-in: ${HOTEL_RULES.checkIn}. Sem café da manhã. Estacionamento grátis a 80m.
-2. QUARTOS: 
+DIRETRIZES DE RESPOSTA (Guidelines):
+1. **Direct to the point.** Start by answering the question.
+2. **Use bullets (•)** for lists.
+3. **Maximum 2 to 3 sentences** per paragraph.
+4. **No long greetings.** Just a quick "Hello" or go straight to the answer.
+
+BASE DE CONHECIMENTO (Resumida):
+
+1. **O HOTEL:**
+   - **Local:** Vila Portes, Foz do Iguaçu (Next to the Friendship Bridge/Paraguay).
+   - **Check-in:** ${HOTEL_RULES.checkIn}.
+   - **Parking:** Free, 80m from the building (Secure).
+   - **Breakfast:** **NOT served.** We have full kitchens in most suites and a bakery 50m away.
+
+2. **SHOPPING (Paraguay):**
+   - **Docs:** Passport or ID Card (less than 10 years old) MANDATORY.
+   - **Quota:** U$ 500 via land.
+
+3. **ROOM INVENTORY:**
 ${ROOM_INVENTORY}
-3. TURISMO/COMPRAS: Use a ferramenta de busca do Google para dar informações atualizadas sobre horários de lojas no Paraguai ou eventos em Foz se o usuário perguntar.
 
-Sempre priorize vender uma reserva no Residencial Shalfa.
+Respond in ${currentLangName} keeping the objective tone.
 `;
+};
 
-export const sendMessageToGemini = async (history: {role: string, parts: {text: string}[]}[], message: string): Promise<string> => {
-  // Always use process.env.API_KEY directly as per guidelines
+export const sendMessageToGemini = async (
+    history: {role: string, parts: {text: string}[]}[], 
+    message: string,
+    language: string = 'pt'
+): Promise<string> => {
   if (!process.env.API_KEY) {
-    return "No momento estou offline. Mas você pode falar com nossa equipe agora mesmo pelo WhatsApp: " + HOTEL_INFO.phone;
+    return "O sistema de Inteligência Artificial está temporariamente indisponível.";
   }
 
   try {
-    // Initialize GoogleGenAI instance right before the call using the named parameter
     const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
-    const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
-      contents: [
-        ...history.map(h => ({ role: h.role as any, parts: h.parts })),
-        { role: 'user', parts: [{ text: message }] }
-      ],
-      config: {
-        systemInstruction: SYSTEM_INSTRUCTION,
-        tools: [{ googleSearch: {} }],
-        temperature: 0.2,
-      },
+    const modelName = 'gemini-3-flash-preview';
+    
+    const chat = ai.chats.create({
+        model: modelName,
+        config: {
+            systemInstruction: getSystemInstruction(language),
+            temperature: 0.3,
+            topK: 40,
+        },
+        history: history.map(h => ({
+            role: h.role,
+            parts: h.parts
+        }))
     });
 
-    // Access the .text property directly as it is a property, not a method
-    return response.text || "Desculpe, não consegui processar sua pergunta. Pode repetir?";
+    const result = await chat.sendMessage({ message });
+    return result.text || "Poderia repetir?";
   } catch (error) {
-    console.error("Gemini Service Error:", error);
-    return "Estou com uma instabilidade técnica. Por favor, tente novamente em instantes ou chame no WhatsApp.";
+    console.error("Gemini API Error:", error);
+    return "Erro de conexão. Tente novamente.";
   }
 };
